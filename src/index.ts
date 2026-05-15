@@ -90,14 +90,16 @@ export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const url = new URL(request.url);
 
-    if (url.pathname === "/sse" || url.pathname === "/sse/message") {
-      // @ts-ignore
-      return BerlinTransportMCP.serveSSE("/sse").fetch(request, env, ctx);
+    if (url.pathname === "/mcp" || url.pathname.startsWith("/mcp/")) {
+      return BerlinTransportMCP.serve("/mcp", { transport: "auto" }).fetch(
+        request,
+        env,
+        ctx
+      );
     }
 
-    if (url.pathname === "/mcp") {
-      // @ts-ignore
-      return BerlinTransportMCP.serve("/mcp").fetch(request, env, ctx);
+    if (url.pathname === "/sse" || url.pathname.startsWith("/sse/")) {
+      return BerlinTransportMCP.serveSSE("/sse").fetch(request, env, ctx);
     }
 
     return new Response("Not found", { status: 404 });

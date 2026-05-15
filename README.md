@@ -26,27 +26,34 @@ Get journey options from one stop to another.
 - `departure` (string, optional): Departure time (e.g. "tomorrow 2pm")
 - `results` (number, optional): Number of results to return
 
+## Transports
+
+The server exposes two endpoints:
+
+- `**/mcp**` — **Streamable HTTP** (recommended). Uses `auto` transport, which also accepts legacy SSE clients on the same endpoint.
+- `/sse` — Legacy SSE transport, kept for backward compatibility with existing clients.
+
 ## Connect Claude Desktop to your MCP server
 
-You can also connect to your remote MCP server from local MCP clients, by using the [mcp-remote proxy](https://www.npmjs.com/package/mcp-remote). 
+You can connect to your remote MCP server from local MCP clients via the [mcp-remote proxy](https://www.npmjs.com/package/mcp-remote).
 
-To connect to your MCP server from Claude Desktop, follow [Anthropic's Quickstart](https://modelcontextprotocol.io/quickstart/user) and within Claude Desktop go to Settings > Developer > Edit Config.
-
-Update with this configuration:
+To connect from Claude Desktop, follow [Anthropic's Quickstart](https://modelcontextprotocol.io/quickstart/user) and in Claude Desktop go to Settings > Developer > Edit Config:
 
 ```json
 {
   "mcpServers": {
-    "calculator": {
+    "berlin-transport": {
       "command": "npx",
       "args": [
         "mcp-remote",
-        "https://berlin-transport.mcp-tools.app/sse"  // or if local http://localhost:8787/sse
+        "https://berlin-transport.mcp-tools.app/mcp"
       ]
     }
   }
 }
 ```
+
+For local development, use `http://localhost:8787/mcp`. Older clients that only speak SSE can point at the `/sse` endpoint instead.
 
 Restart Claude and you should see the tools become available.
 
