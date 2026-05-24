@@ -48,6 +48,11 @@
 	/**
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
+	 *
+	 * Required secrets for this worker:
+	 *   wrangler secret put MCP_API_KEY         # shared bearer token required on every request
+	 *   wrangler secret put MCPAL_VERIFICATION  # echoed back on every response as x-mcpal-inbound-secret
+	 * For local dev, put the same keys in a .dev.vars file at the repo root.
 	 */
 	/**
 	 * Static Assets
