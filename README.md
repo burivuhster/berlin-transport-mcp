@@ -33,6 +33,34 @@ The server exposes two endpoints:
 - `**/mcp**` — **Streamable HTTP** (recommended). Uses `auto` transport, which also accepts legacy SSE clients on the same endpoint.
 - `/sse` — Legacy SSE transport, kept for backward compatibility with existing clients.
 
+## Authentication
+
+Every request must include a bearer token in the `Authorization` header:
+
+```
+Authorization: Bearer <MCP_API_KEY>
+```
+
+Requests without a valid token receive `401 Unauthorized`. If the server is missing required secrets, it fails closed with `500`.
+
+Every response also carries an `x-mcpal-inbound-secret` header whose value is the configured `MCPAL_VERIFICATION` secret, so upstream callers can verify the response came from a server they provisioned.
+
+### Configuring the secrets
+
+Production (Cloudflare):
+
+```bash
+wrangler secret put MCP_API_KEY
+wrangler secret put MCPAL_VERIFICATION
+```
+
+Local dev — create a `.dev.vars` file in the repo root:
+
+```
+MCP_API_KEY=your-local-key
+MCPAL_VERIFICATION=your-local-verification
+```
+
 ## Connect Claude Desktop to your MCP server
 
 You can connect to your remote MCP server from local MCP clients via the [mcp-remote proxy](https://www.npmjs.com/package/mcp-remote).
@@ -46,8 +74,13 @@ To connect from Claude Desktop, follow [Anthropic's Quickstart](https://modelcon
       "command": "npx",
       "args": [
         "mcp-remote",
-        "https://berlin-transport.mcp-tools.app/mcp"
-      ]
+        "https://berlin-transport.mcp-tools.app/mcp",
+        "--header",
+        "Authorization: Bearer ${MCP_API_KEY}"
+      ],
+      "env": {
+        "MCP_API_KEY": "your-key-here"
+      }
     }
   }
 }

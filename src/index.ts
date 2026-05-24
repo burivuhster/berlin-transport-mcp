@@ -1,8 +1,55 @@
 import { McpAgent } from "agents/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
 const VBB_API_BASE = "https://v6.vbb.transport.rest";
+
+type AuthEnv = Env & { MCP_API_KEY?: string; MCPAL_VERIFICATION?: string };
+
+function tokensMatch(provided: string, expected: string): boolean {
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+function requireAuth(request: Request, env: AuthEnv): Response | null {
+  if (!env.MCP_API_KEY) {
+    return new Response("Server misconfigured: MCP_API_KEY is not set", {
+      status: 500,
+    });
+  }
+  if (!env.MCPAL_VERIFICATION) {
+    return new Response("Server misconfigured: MCPAL_VERIFICATION is not set", {
+      status: 500,
+    });
+  }
+  const header = request.headers.get("Authorization") ?? "";
+  const prefix = "Bearer ";
+  if (
+    !header.startsWith(prefix) ||
+    !tokensMatch(header.slice(prefix.length), env.MCP_API_KEY)
+  ) {
+    return new Response("Unauthorized", {
+      status: 401,
+      headers: { "WWW-Authenticate": 'Bearer realm="mcp"' },
+    });
+  }
+  return null;
+}
+
+function withInboundSecret(response: Response, env: AuthEnv): Response {
+  const headers = new Headers(response.headers);
+  if (env.MCPAL_VERIFICATION) {
+    headers.set("x-mcpal-inbound-secret", env.MCPAL_VERIFICATION);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
 
 // Define our MCP agent with tools
 export class BerlinTransportMCP extends McpAgent {
@@ -87,21 +134,28 @@ export class BerlinTransportMCP extends McpAgent {
 }
 
 export default {
-  fetch(request: Request, env: Env, ctx: ExecutionContext) {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    const authEnv = env as AuthEnv;
+    const authError = requireAuth(request, authEnv);
+    if (authError) return withInboundSecret(authError, authEnv);
+
     const url = new URL(request.url);
+    let response: Response;
 
     if (url.pathname === "/mcp" || url.pathname.startsWith("/mcp/")) {
-      return BerlinTransportMCP.serve("/mcp", { transport: "auto" }).fetch(
+      response = await BerlinTransportMCP.serve("/mcp", {
+        transport: "auto",
+      }).fetch(request, env, ctx);
+    } else if (url.pathname === "/sse" || url.pathname.startsWith("/sse/")) {
+      response = await BerlinTransportMCP.serveSSE("/sse").fetch(
         request,
         env,
         ctx
       );
+    } else {
+      response = new Response("Not found", { status: 404 });
     }
 
-    if (url.pathname === "/sse" || url.pathname.startsWith("/sse/")) {
-      return BerlinTransportMCP.serveSSE("/sse").fetch(request, env, ctx);
-    }
-
-    return new Response("Not found", { status: 404 });
+    return withInboundSecret(response, authEnv);
   },
 };
