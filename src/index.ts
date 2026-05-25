@@ -39,7 +39,7 @@ function requireAuth(request: Request, env: AuthEnv): Response | null {
 function withInboundSecret(response: Response, env: AuthEnv): Response {
 	const headers = new Headers(response.headers);
 	if (env.MCPAL_VERIFICATION) {
-		headers.set("x-mcpal-inbound-secret", env.MCPAL_VERIFICATION);
+		headers.set("X-MCP-Verification", env.MCPAL_VERIFICATION);
 	}
 	return new Response(response.body, {
 		status: response.status,
